@@ -2,113 +2,142 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>𝗖𝗼𝗱𝗲𝗕𝗹𝗼𝗰𝗸𝘀 — Offline Block Editor</title>
+  <title>𝗖𝗼𝗱𝗲𝗕𝗹𝗼𝗰𝗸𝘀 — Offline Editor</title>
   <style>
+    * { box-sizing: border-box; }
     body {
       margin: 0;
-      font-family: sans-serif;
+      font-family: 'Segoe UI', sans-serif;
       display: flex;
       height: 100vh;
-      user-select: none;
+      overflow: hidden;
     }
     #palette {
-      width: 250px;
+      width: 280px;
       background: #f0f0f0;
-      padding: 10px;
-      box-sizing: border-box;
-      border-right: 1px solid #ccc;
+      padding: 12px;
       overflow-y: auto;
+      border-right: 2px solid #ccc;
     }
     #workspace {
       flex: 1;
-      position: relative;
       background: #fff;
+      position: relative;
       overflow: auto;
     }
-    .block {
-      padding: 8px 12px;
+    h1 {
+      margin: 0 0 10px;
+      font-size: 20px;
+      text-align: center;
+      font-weight: 900;
+    }
+    h3 {
+      margin: 16px 0 6px;
+      font-size: 14px;
+      color: #333;
+    }
+    .palette-block, .block {
+      display: inline-block;
       margin: 4px 0;
+      padding: 6px 12px;
       border-radius: 8px;
-      cursor: grab;
       color: white;
       font-weight: bold;
-      position: absolute;
-    }
-    .palette-block {
-      position: relative;
       cursor: grab;
+      font-size: 14px;
+      user-select: none;
     }
-    .stack {
-      display: block;
+    .block {
+      position: absolute;
+      cursor: move;
     }
-    /* Block colors like Scratch categories */
+
+    /* Scratch colors */
     .motion { background: #4C97FF; }
     .looks { background: #9966FF; }
+    .sound { background: #D65CD6; }
+    .events { background: #FFBF00; color: black; }
     .control { background: #FFAB19; }
     .sensing { background: #5CB1D6; }
     .operators { background: #59C059; }
     .variables { background: #FF8C1A; }
+    .list { background: #CC5C5C; }
+    .my-blocks { background: #FF6680; }
+
+    .category-label {
+      font-weight: bold;
+      font-size: 13px;
+      margin-top: 16px;
+      color: #222;
+      border-bottom: 1px solid #ccc;
+    }
   </style>
 </head>
 <body>
   <div id="palette">
-    <h3>Palette</h3>
-    <div class="palette-block motion" data-type="move">move (10) steps</div>
-    <div class="palette-block motion" data-type="turn">turn (15) degrees</div>
-    <div class="palette-block looks" data-type="say">say “Hello!”</div>
-    <div class="palette-block control" data-type="repeat">repeat (10) {/* ... */}</div>
-    <div class="palette-block control" data-type="if">if <condition> then {/* ... */}</div>
-    <div class="palette-block sensing" data-type="touching">touching (mouse-pointer)?</div>
-    <div class="palette-block operators" data-type="add">(+ (1) (2))</div>
-    <div class="palette-block variables" data-type="setVar">set [var] to (0)</div>
+    <h1>𝗖𝗼𝗱𝗲𝗕𝗹𝗼𝗰𝗸𝘀</h1>
   </div>
   <div id="workspace"></div>
 
   <script>
+    const categories = {
+      motion: ['move () steps','turn cw () degrees','turn ccw () degrees','go to x: () y: ()','glide () secs to x: () y: ()','point in direction ()','point towards [mouse-pointer]','change x by ()','set x to ()','change y by ()','set y to ()','if on edge, bounce','set rotation style [left-right]','x position','y position','direction'],
+      looks: ['say [Hello!] for (2) seconds','say [Hello!]','think [Hmm...] for (2) seconds','think [Hmm...]','switch costume to (costume1)','next costume','switch backdrop to (backdrop1)','next backdrop','change size by (10)','set size to (100)%','change [color] effect by (25)','set [color] effect to (0)','clear graphic effects','show','hide','go to front layer','go back (1) layers','(costume #)','(backdrop name)','(size)'],
+      sound: ['play sound (pop) until done','start sound (pop)','stop all sounds','change pitch effect by (10)','set pitch effect to (100)','clear sound effects','change volume by (-10)','set volume to (100)%','(volume)'],
+      events: ['when green flag clicked','when [space] key pressed','when this sprite clicked','when backdrop switches to [backdrop1]','when [loudness] > (10)','when I receive [message1]','broadcast [message1]','broadcast [message1] and wait'],
+      control: ['wait (1) seconds','repeat (10)','forever','if <> then','if <> then else','wait until <>','repeat until <>','stop [all]','when I start as a clone','create clone of [myself]','delete this clone'],
+      sensing: ['<touching [mouse-pointer]?>','<touching color [#ff0000]?>','<color [#ff0000] is touching [#0000ff]?>','distance to [mouse-pointer]','ask [What\'s your name?] and wait','(answer)','<key [space] pressed?>','<mouse down?>','(mouse x)','(mouse y)','(loudness)','(timer)','reset timer','(days since 2000)','(username)'],
+      operators: ['() + ()','() - ()','() * ()','() / ()','pick random (1) to (10)','<() > ()>','<() < ()>','<() = ()>','<true and false>','<true or false>','<not true>','join [hello ] [world]','letter (1) of [word]','length of [word]','<[word] contains [w]?>','() mod ()','round ()','[abs] of ()'],
+      variables: ['set [score] to (0)','change [score] by (1)','show variable [score]','hide variable [score]','(score)'],
+      list: ['add [thing] to [list]','delete (1) of [list]','delete all of [list]','insert [thing] at (1) of [list]','replace item (1) of [list] with [thing]','item (1) of [list]','item # of [thing] in [list]','length of [list]','<[list] contains [thing]?>','show list [list]','hide list [list]'],
+      'my-blocks': ['define [custom block]']
+    };
+
     const palette = document.getElementById('palette');
     const workspace = document.getElementById('workspace');
-    let dragItem = null;
+    let dragging = null;
     let offsetX = 0, offsetY = 0;
+
+    for (const [category, blocks] of Object.entries(categories)) {
+      const label = document.createElement('div');
+      label.className = 'category-label';
+      label.textContent = category.charAt(0).toUpperCase() + category.slice(1);
+      palette.appendChild(label);
+
+      blocks.forEach(text => {
+        const block = document.createElement('div');
+        block.className = `palette-block ${category}`;
+        block.textContent = text;
+        block.dataset.category = category;
+        palette.appendChild(block);
+      });
+    }
 
     palette.addEventListener('mousedown', e => {
       if (e.target.classList.contains('palette-block')) {
-        const type = e.target.getAttribute('data-type');
-        dragItem = e.target.cloneNode(true);
-        dragItem.classList.remove('palette-block');
-        dragItem.classList.add('block');
-        dragItem.style.position = 'absolute';
-        dragItem.style.left = e.pageX - palette.offsetWidth + 'px';
-        dragItem.style.top = e.pageY + 'px';
-        workspace.appendChild(dragItem);
-        offsetX = e.offsetX;
-        offsetY = e.offsetY;
+        dragging = e.target.cloneNode(true);
+        dragging.classList.remove('palette-block');
+        dragging.classList.add('block');
+        workspace.appendChild(dragging);
+
+        const rect = e.target.getBoundingClientRect();
+        offsetX = e.clientX - rect.left;
+        offsetY = e.clientY - rect.top;
+
+        dragging.style.left = (e.pageX - offsetX - palette.offsetWidth) + 'px';
+        dragging.style.top = (e.pageY - offsetY) + 'px';
       }
     });
 
     document.addEventListener('mousemove', e => {
-      if (!dragItem) return;
-      dragItem.style.left = (e.pageX - offsetX - palette.offsetWidth) + 'px';
-      dragItem.style.top = (e.pageY - offsetY) + 'px';
+      if (dragging) {
+        dragging.style.left = (e.pageX - offsetX - palette.offsetWidth) + 'px';
+        dragging.style.top = (e.pageY - offsetY) + 'px';
+      }
     });
 
-    document.addEventListener('mouseup', e => {
-      if (!dragItem) return;
-      // Snap to grid / stack logic
-      const blocks = Array.from(workspace.querySelectorAll('.block')).filter(b => b !== dragItem);
-      let snapped = false;
-      blocks.forEach(b => {
-        const r1 = b.getBoundingClientRect();
-        const r2 = dragItem.getBoundingClientRect();
-        if (Math.abs(r2.left - r1.left) < 20 && Math.abs(r2.top - (r1.top + r1.height + 5)) < 20) {
-          dragItem.style.left = r1.left + 'px';
-          dragItem.style.top = (r1.top + r1.height + 5) + 'px';
-          snapped = true;
-        }
-      });
-      if (!snapped) {
-        // leave free-floating
-      }
-      dragItem = null;
+    document.addEventListener('mouseup', () => {
+      dragging = null;
     });
   </script>
 </body>
