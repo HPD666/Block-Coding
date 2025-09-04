@@ -1,9 +1,201 @@
-<title>Code With Blocks</title>
-<body bgcolor="orange">
-  <body bgcolor="sinbad">
-<h1>𝗖𝗼𝗱𝗲𝗕𝗹𝗼𝗰𝗸𝘀</h1>
-  </body>
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>𝗖𝗼𝗱𝗲𝗕𝗹𝗼𝗰𝗸𝘀</title>
+  <style>
+    html, body {
+      margin: 0;
+      height: 100%;
+      overflow: hidden;
+      font-family: sans-serif;
+    }
+    #blocklyArea {
+      height: 100%;
+      width: 60%;
+      float: left;
+    }
+    #stage {
+      width: 40%;
+      height: 100%;
+      float: left;
+      background-color: #eee;
+      position: relative;
+    }
+    #sprite {
+      width: 40px;
+      height: 40px;
+      background-color: red;
+      position: absolute;
+      top: 180px;
+      left: 180px;
+      transform-origin: center center;
+    }
+    #runButton {
+      position: absolute;
+      bottom: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      padding: 10px 20px;
+      background: green;
+      color: white;
+      border: none;
+      cursor: pointer;
+      font-size: 16px;
+    }
+  </style>
 
+  <!-- Blockly local build -->
+  <script src="https://unpkg.com/blockly/blockly.min.js"></script>
+</head>
+<body>
+  <div id="blocklyArea"></div>
+  <div id="stage">
+    <div id="sprite"></div>
+    <button id="runButton">Green Flag</button>
+  </div>
 
+  <script>
+    const workspace = Blockly.inject('blocklyArea', {
+      toolbox: {
+        kind: 'flyoutToolbox',
+        contents: [
+          {
+            kind: 'block',
+            type: 'event_whenflagclicked'
+          },
+          {
+            kind: 'block',
+            type: 'motion_move'
+          },
+          {
+            kind: 'block',
+            type: 'motion_turnright'
+          },
+          {
+            kind: 'block',
+            type: 'motion_turnleft'
+          }
+        ]
+      }
+    });
+
+    // Define blocks
+    Blockly.defineBlocksWithJsonArray([
+      {
+        "type": "event_whenflagclicked",
+        "message0": "when green flag clicked",
+        "nextStatement": null,
+        "colour": 120,
+        "tooltip": "Start when green flag is clicked",
+        "hat": "cap"
+      },
+      {
+        "type": "motion_move",
+        "message0": "move %1 steps",
+        "args0": [
+          {
+            "type": "field_number",
+            "name": "STEPS",
+            "value": 10
+          }
+        ],
+        "previousStatement": null,
+        "nextStatement": null,
+        "colour": 230,
+        "tooltip": "Move sprite forward",
+      },
+      {
+        "type": "motion_turnright",
+        "message0": "turn right %1 degrees",
+        "args0": [
+          {
+            "type": "field_angle",
+            "name": "DEGREES",
+            "angle": 15
+          }
+        ],
+        "previousStatement": null,
+        "nextStatement": null,
+        "colour": 230,
+        "tooltip": "Turn sprite right"
+      },
+      {
+        "type": "motion_turnleft",
+        "message0": "turn left %1 degrees",
+        "args0": [
+          {
+            "type": "field_angle",
+            "name": "DEGREES",
+            "angle": 15
+          }
+        ],
+        "previousStatement": null,
+        "nextStatement": null,
+        "colour": 230,
+        "tooltip": "Turn sprite left"
+      }
+    ]);
+
+    // Sprite properties
+    let sprite = document.getElementById("sprite");
+    let x = 180, y = 180, angle = 0;
+
+    function resetSprite() {
+      x = 180;
+      y = 180;
+      angle = 0;
+      updateSprite();
+    }
+
+    function updateSprite() {
+      sprite.style.left = x + "px";
+      sprite.style.top = y + "px";
+      sprite.style.transform = `rotate(${angle}deg)`;
+    }
+
+    function runCode() {
+      resetSprite();
+      const code = Blockly.JavaScript.workspaceToCode(workspace);
+      try {
+        eval(code);
+      } catch (e) {
+        alert("Error: " + e);
+      }
+    }
+
+    document.getElementById("runButton").addEventListener("click", runCode);
+
+    // Code generator
+    Blockly.JavaScript['event_whenflagclicked'] = function (block) {
+      const next = Blockly.JavaScript.statementToCode(block, 'DO');
+      return next;
+    };
+
+    Blockly.JavaScript['motion_move'] = function (block) {
+      const steps = Number(block.getFieldValue('STEPS'));
+      return `
+        x += ${steps} * Math.cos(angle * Math.PI / 180);
+        y += ${steps} * Math.sin(angle * Math.PI / 180);
+        updateSprite();
+      `;
+    };
+
+    Blockly.JavaScript['motion_turnright'] = function (block) {
+      const degrees = Number(block.getFieldValue('DEGREES'));
+      return `
+        angle += ${degrees};
+        updateSprite();
+      `;
+    };
+
+    Blockly.JavaScript['motion_turnleft'] = function (block) {
+      const degrees = Number(block.getFieldValue('DEGREES'));
+      return `
+        angle -= ${degrees};
+        updateSprite();
+      `;
+    };
+  </script>
 </body>
-
+</html>
