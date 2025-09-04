@@ -1,201 +1,115 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-  <meta charset="utf-8">
-  <title>𝗖𝗼𝗱𝗲𝗕𝗹𝗼𝗰𝗸𝘀</title>
+  <meta charset="UTF-8">
+  <title>𝗖𝗼𝗱𝗲𝗕𝗹𝗼𝗰𝗸𝘀 — Offline Block Editor</title>
   <style>
-    html, body {
+    body {
       margin: 0;
-      height: 100%;
-      overflow: hidden;
       font-family: sans-serif;
+      display: flex;
+      height: 100vh;
+      user-select: none;
     }
-    #blocklyArea {
-      height: 100%;
-      width: 60%;
-      float: left;
+    #palette {
+      width: 250px;
+      background: #f0f0f0;
+      padding: 10px;
+      box-sizing: border-box;
+      border-right: 1px solid #ccc;
+      overflow-y: auto;
     }
-    #stage {
-      width: 40%;
-      height: 100%;
-      float: left;
-      background-color: #eee;
+    #workspace {
+      flex: 1;
       position: relative;
+      background: #fff;
+      overflow: auto;
     }
-    #sprite {
-      width: 40px;
-      height: 40px;
-      background-color: red;
-      position: absolute;
-      top: 180px;
-      left: 180px;
-      transform-origin: center center;
-    }
-    #runButton {
-      position: absolute;
-      bottom: 20px;
-      left: 50%;
-      transform: translateX(-50%);
-      padding: 10px 20px;
-      background: green;
+    .block {
+      padding: 8px 12px;
+      margin: 4px 0;
+      border-radius: 8px;
+      cursor: grab;
       color: white;
-      border: none;
-      cursor: pointer;
-      font-size: 16px;
+      font-weight: bold;
+      position: absolute;
     }
+    .palette-block {
+      position: relative;
+      cursor: grab;
+    }
+    .stack {
+      display: block;
+    }
+    /* Block colors like Scratch categories */
+    .motion { background: #4C97FF; }
+    .looks { background: #9966FF; }
+    .control { background: #FFAB19; }
+    .sensing { background: #5CB1D6; }
+    .operators { background: #59C059; }
+    .variables { background: #FF8C1A; }
   </style>
-
-  <!-- Blockly local build -->
-  <script src="https://unpkg.com/blockly/blockly.min.js"></script>
 </head>
 <body>
-  <div id="blocklyArea"></div>
-  <div id="stage">
-    <div id="sprite"></div>
-    <button id="runButton">Green Flag</button>
+  <div id="palette">
+    <h3>Palette</h3>
+    <div class="palette-block motion" data-type="move">move (10) steps</div>
+    <div class="palette-block motion" data-type="turn">turn (15) degrees</div>
+    <div class="palette-block looks" data-type="say">say “Hello!”</div>
+    <div class="palette-block control" data-type="repeat">repeat (10) {/* ... */}</div>
+    <div class="palette-block control" data-type="if">if <condition> then {/* ... */}</div>
+    <div class="palette-block sensing" data-type="touching">touching (mouse-pointer)?</div>
+    <div class="palette-block operators" data-type="add">(+ (1) (2))</div>
+    <div class="palette-block variables" data-type="setVar">set [var] to (0)</div>
   </div>
+  <div id="workspace"></div>
 
   <script>
-    const workspace = Blockly.inject('blocklyArea', {
-      toolbox: {
-        kind: 'flyoutToolbox',
-        contents: [
-          {
-            kind: 'block',
-            type: 'event_whenflagclicked'
-          },
-          {
-            kind: 'block',
-            type: 'motion_move'
-          },
-          {
-            kind: 'block',
-            type: 'motion_turnright'
-          },
-          {
-            kind: 'block',
-            type: 'motion_turnleft'
-          }
-        ]
+    const palette = document.getElementById('palette');
+    const workspace = document.getElementById('workspace');
+    let dragItem = null;
+    let offsetX = 0, offsetY = 0;
+
+    palette.addEventListener('mousedown', e => {
+      if (e.target.classList.contains('palette-block')) {
+        const type = e.target.getAttribute('data-type');
+        dragItem = e.target.cloneNode(true);
+        dragItem.classList.remove('palette-block');
+        dragItem.classList.add('block');
+        dragItem.style.position = 'absolute';
+        dragItem.style.left = e.pageX - palette.offsetWidth + 'px';
+        dragItem.style.top = e.pageY + 'px';
+        workspace.appendChild(dragItem);
+        offsetX = e.offsetX;
+        offsetY = e.offsetY;
       }
     });
 
-    // Define blocks
-    Blockly.defineBlocksWithJsonArray([
-      {
-        "type": "event_whenflagclicked",
-        "message0": "when green flag clicked",
-        "nextStatement": null,
-        "colour": 120,
-        "tooltip": "Start when green flag is clicked",
-        "hat": "cap"
-      },
-      {
-        "type": "motion_move",
-        "message0": "move %1 steps",
-        "args0": [
-          {
-            "type": "field_number",
-            "name": "STEPS",
-            "value": 10
-          }
-        ],
-        "previousStatement": null,
-        "nextStatement": null,
-        "colour": 230,
-        "tooltip": "Move sprite forward",
-      },
-      {
-        "type": "motion_turnright",
-        "message0": "turn right %1 degrees",
-        "args0": [
-          {
-            "type": "field_angle",
-            "name": "DEGREES",
-            "angle": 15
-          }
-        ],
-        "previousStatement": null,
-        "nextStatement": null,
-        "colour": 230,
-        "tooltip": "Turn sprite right"
-      },
-      {
-        "type": "motion_turnleft",
-        "message0": "turn left %1 degrees",
-        "args0": [
-          {
-            "type": "field_angle",
-            "name": "DEGREES",
-            "angle": 15
-          }
-        ],
-        "previousStatement": null,
-        "nextStatement": null,
-        "colour": 230,
-        "tooltip": "Turn sprite left"
+    document.addEventListener('mousemove', e => {
+      if (!dragItem) return;
+      dragItem.style.left = (e.pageX - offsetX - palette.offsetWidth) + 'px';
+      dragItem.style.top = (e.pageY - offsetY) + 'px';
+    });
+
+    document.addEventListener('mouseup', e => {
+      if (!dragItem) return;
+      // Snap to grid / stack logic
+      const blocks = Array.from(workspace.querySelectorAll('.block')).filter(b => b !== dragItem);
+      let snapped = false;
+      blocks.forEach(b => {
+        const r1 = b.getBoundingClientRect();
+        const r2 = dragItem.getBoundingClientRect();
+        if (Math.abs(r2.left - r1.left) < 20 && Math.abs(r2.top - (r1.top + r1.height + 5)) < 20) {
+          dragItem.style.left = r1.left + 'px';
+          dragItem.style.top = (r1.top + r1.height + 5) + 'px';
+          snapped = true;
+        }
+      });
+      if (!snapped) {
+        // leave free-floating
       }
-    ]);
-
-    // Sprite properties
-    let sprite = document.getElementById("sprite");
-    let x = 180, y = 180, angle = 0;
-
-    function resetSprite() {
-      x = 180;
-      y = 180;
-      angle = 0;
-      updateSprite();
-    }
-
-    function updateSprite() {
-      sprite.style.left = x + "px";
-      sprite.style.top = y + "px";
-      sprite.style.transform = `rotate(${angle}deg)`;
-    }
-
-    function runCode() {
-      resetSprite();
-      const code = Blockly.JavaScript.workspaceToCode(workspace);
-      try {
-        eval(code);
-      } catch (e) {
-        alert("Error: " + e);
-      }
-    }
-
-    document.getElementById("runButton").addEventListener("click", runCode);
-
-    // Code generator
-    Blockly.JavaScript['event_whenflagclicked'] = function (block) {
-      const next = Blockly.JavaScript.statementToCode(block, 'DO');
-      return next;
-    };
-
-    Blockly.JavaScript['motion_move'] = function (block) {
-      const steps = Number(block.getFieldValue('STEPS'));
-      return `
-        x += ${steps} * Math.cos(angle * Math.PI / 180);
-        y += ${steps} * Math.sin(angle * Math.PI / 180);
-        updateSprite();
-      `;
-    };
-
-    Blockly.JavaScript['motion_turnright'] = function (block) {
-      const degrees = Number(block.getFieldValue('DEGREES'));
-      return `
-        angle += ${degrees};
-        updateSprite();
-      `;
-    };
-
-    Blockly.JavaScript['motion_turnleft'] = function (block) {
-      const degrees = Number(block.getFieldValue('DEGREES'));
-      return `
-        angle -= ${degrees};
-        updateSprite();
-      `;
-    };
+      dragItem = null;
+    });
   </script>
 </body>
 </html>
